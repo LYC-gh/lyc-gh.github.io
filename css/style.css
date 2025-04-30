@@ -1,4 +1,11 @@
-/* 基础样式 */
+/* 全局基础样式 */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    font-size: 16px;
+    height: 100%;
+}
+
 body {
     font-family: 'Microsoft YaHei', sans-serif;
     line-height: 1.6;
@@ -6,6 +13,11 @@ body {
     padding: 0;
     color: #333;
     background-color: #f5f5f5;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 header {
@@ -13,10 +25,18 @@ header {
     color: white;
     padding: 1rem;
     text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
+header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+/* 主容器布局 */
 .container {
     display: flex;
+    flex: 1;
     min-height: calc(100vh - 60px);
 }
 
@@ -26,12 +46,23 @@ header {
     color: white;
     padding: 1rem;
     overflow-y: auto;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+.sidebar h2 {
+    font-size: 1.2rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid #4b6987;
 }
 
 .content {
     flex: 1;
-    padding: 1rem;
+    padding: 1rem 2rem;
     background-color: white;
+    min-width: 0;
+    overflow-y: auto;
 }
 
 /* 目录样式 */
@@ -45,86 +76,189 @@ header {
     background-color: #3d566e;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
 }
 
 .chapter-item:hover, .character-item:hover {
     background-color: #4b6987;
+    transform: translateX(3px);
 }
 
-/* 阅读器样式 */
+/* 阅读器核心样式 */
 #reader {
     max-width: 800px;
     margin: 0 auto;
+    width: 100%;
 }
 
 #chapterTitle {
     color: #2c3e50;
     border-bottom: 2px solid #3498db;
     padding-bottom: 0.5rem;
+    margin-top: 0;
+    font-size: 1.5rem;
+}
+
+/* 章节导航样式 */
+.chapter-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 2rem 0;
+    padding: 1rem 0;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+}
+
+.nav-button {
+    padding: 0.5rem 1.5rem;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.nav-button:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+}
+
+.nav-button:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.chapter-progress {
+    font-size: 0.9rem;
+    color: #7f8c8d;
 }
 
 #chapterContent {
-    /* 原有样式保留 */
-    white-space: pre-line;
-    margin: 1rem 0;
-    padding: 1rem;
+    margin: 1.5rem 0;
+    padding: 1.5rem;
     background-color: #f9f9f9;
     border-radius: 4px;
-    
-    /* 新增以下属性 */
+    white-space: pre-line;
+    word-break: break-word;
     overflow-wrap: break-word;
-    word-break: break-all;
-    hyphens: auto;
-    max-width: 100%;
-    text-align: justify;
+    text-align: left;
     line-height: 1.8;
-    padding: 1.5rem;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    font-family: 'Microsoft YaHei', monospace;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
 }
 
 /* 搜索框样式 */
 .search-container {
     margin: 1rem auto;
-    max-width: 500px;
+    position: relative;
+    max-width: 600px;
+    display: flex;
+    justify-content: center;
 }
 
 #searchInput {
-    padding: 0.5rem;
+    padding: 10px 15px;
     width: 70%;
+    max-width: 400px;
     border: 1px solid #ddd;
-    border-radius: 4px 0 0 4px;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+#searchInput:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52,152,219,0.3);
 }
 
 #searchButton {
-    padding: 0.5rem 1rem;
-    background-color: #3498db;
+    padding: 10px 20px;
+    background-color: #4CAF50;
     color: white;
     border: none;
-    border-radius: 0 4px 4px 0;
+    border-radius: 4px;
     cursor: pointer;
+    margin-left: 10px;
+    font-size: 1rem;
+    transition: all 0.3s;
 }
 
 #searchButton:hover {
-    background-color: #2980b9;
+    background-color: #45a049;
+    transform: translateY(-1px);
+}
+
+#searchResults {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    max-width: 500px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: white;
+	color: black;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    z-index: 100;
+    display: none;
+}
+
+.search-result-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+	color: black;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-result-item:hover {
+    background-color: #f5f5f5;
+}
+
+.search-result-item h3 {
+    margin: 0 0 5px 0;
+    color: black;
+}
+
+.search-result-item p {
+    margin: 0;
+    color: #555;
+    font-size: 0.9rem;
 }
 
 /* 书签按钮样式 */
 .bookmark-container {
-    margin-top: 1rem;
+    margin-top: 1.5rem;
+    text-align: center;
 }
 
 #saveBookmark, #loadBookmark {
-    padding: 0.5rem 1rem;
-    margin-right: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    margin: 0 0.5rem;
     background-color: #27ae60;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.3s;
 }
 
 #saveBookmark:hover, #loadBookmark:hover {
     background-color: #219653;
+    transform: translateY(-1px);
 }
 
 /* 响应式设计 */
@@ -136,5 +270,73 @@ header {
     .sidebar {
         width: 100%;
         height: auto;
+        position: static;
+        padding: 0.8rem;
+    }
+    
+    .content {
+        padding: 0.8rem;
+    }
+    
+    #chapterContent {
+        padding: 1rem;
+        font-size: 1rem;
+        line-height: 1.8;
+    }
+    
+    .chapter-nav {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .nav-button {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .search-container {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    #searchInput {
+        width: 90%;
+        margin-bottom: 0.5rem;
+    }
+    
+    #searchButton {
+        margin-left: 0;
+        width: 90%;
+    }
+    
+    #searchResults {
+        width: 90%;
+        left: 5%;
+        transform: none;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+    
+    #chapterTitle {
+        font-size: 1.3rem;
+    }
+    
+    #chapterContent {
+        padding: 0.8rem;
+        font-size: 0.95rem;
+    }
+    
+    .bookmark-container {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    #saveBookmark, #loadBookmark {
+        margin: 0.3rem 0;
+        width: 100%;
     }
 }

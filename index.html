@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LYC的小说</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -10,11 +10,11 @@
     <header>
         <h1>LYC的小说</h1>
         <div class="search-container">
-            <input type="text" id="searchInput" placeholder="搜索章节或人物...">
+            <input type="text" id="searchInput" placeholder="搜索章节或人物..." autocomplete="off">
             <button id="searchButton">搜索</button>
+            <div id="searchResults"></div>
         </div>
     </header>
-    
     <div class="container">
         <aside class="sidebar">
             <h2>章节目录</h2>
@@ -28,6 +28,11 @@
             <div id="reader">
                 <h2 id="chapterTitle">请选择章节</h2>
                 <div id="chapterContent"></div>
+                <div class="chapter-nav">
+                    <button id="prevChapter" class="nav-button" disabled>上一章</button>
+                    <span class="chapter-progress" id="chapterProgress"></span>
+                    <button id="nextChapter" class="nav-button" disabled>下一章</button>
+                </div>
                 <div class="bookmark-container">
                     <button id="saveBookmark">保存进度</button>
                     <button id="loadBookmark">读取进度</button>
