@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的小说网站</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>我的小说</h1>
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="搜索章节或人物...">
+                <button id="search-btn">搜索</button>
+            </div>
+        </header>
+        
+        <div class="content-wrapper">
+            <aside class="sidebar">
+                <h2>目录</h2>
+                <ul id="chapter-list">
+                    <!-- 章节列表将通过JavaScript动态生成 -->
+                </ul>
+            </aside>
+            
+            <main class="reader">
+                <div class="chapter-title" id="current-chapter"></div>
+                <div class="chapter-content" id="chapter-content"></div>
+                <div class="navigation">
+                    <button id="prev-btn">上一章</button>
+                    <button id="next-btn">下一章</button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

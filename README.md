@@ -1,1 +1,0 @@
-# lyc-gh.github.io
