@@ -65,39 +65,22 @@ header {
 }
 
 #chapterContent {
+    /* 原有样式保留 */
     white-space: pre-line;
     margin: 1rem 0;
-    padding: 1.5rem;
+    padding: 1rem;
     background-color: #f9f9f9;
     border-radius: 4px;
     
-    /* 文字控制 */
+    /* 新增以下属性 */
     overflow-wrap: break-word;
-    word-break: break-word;
+    word-break: break-all;
     hyphens: auto;
     max-width: 100%;
-    
-    /* 排版优化 */
-    line-height: 1.8;
+    word-break: break-word;
     text-align: justify;
-    font-size: 1rem;
-    
-    /* 防止代码块溢出 */
-    pre, code {
-        white-space: pre-wrap;
-        word-break: break-all;
-        background-color: #eee;
-        padding: 0.2rem 0.4rem;
-        border-radius: 3px;
-    }
-    
-    /* 移动端优化 */
-    @media (max-width: 768px) {
-        padding: 1rem;
-        font-size: 0.95rem;
-        line-height: 1.6;
-        column-width: auto; /* 小屏禁用分栏 */
-    }
+    line-height: 1.8;
+    padding: 1.5rem;
 }
 
 /* 搜索框样式 */
