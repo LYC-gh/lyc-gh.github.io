@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function preloadSearchData() {
         // 获取所有章节和人物设定文件
         Promise.all([
-            fetch('https://api.github.com/repos/你的用户名/你的用户名.github.io/contents/chapters'),
-            fetch('https://api.github.com/repos/你的用户名/你的用户名.github.io/contents/characters')
+            fetch('https://api.github.com/repos/LYC-gh/lyc-gh.github.io/contents/chapters'),
+            fetch('https://api.github.com/repos/LYC-gh/lyc-gh.github.io/contents/characters')
         ])
         .then(responses => Promise.all(responses.map(res => res.json())))
         .then(([chapters, characters]) => {

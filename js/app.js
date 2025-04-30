@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // 加载章节列表
 function loadChapterList() {
     // 使用GitHub API获取chapters目录下的文件列表
-    fetch('https://api.github.com/repos/你的用户名/你的用户名.github.io/contents/chapters')
+    fetch('https://api.github.com/repos/LYC-gh/lyc-gh.github.io/contents/chapters')
         .then(response => response.json())
         .then(files => {
             const chapterList = document.getElementById('chapterList');
@@ -40,7 +40,7 @@ function loadChapterList() {
 // 加载人物设定列表
 function loadCharacterList() {
     // 使用GitHub API获取characters目录下的文件列表
-    fetch('https://api.github.com/repos/你的用户名/你的用户名.github.io/contents/characters')
+    fetch('https://api.github.com/repos/LYC-gh/lyc-gh.github.io/contents/characters')
         .then(response => response.json())
         .then(files => {
             const characterList = document.getElementById('characterList');
@@ -69,7 +69,7 @@ function loadCharacterList() {
 // 加载章节或人物设定内容
 function loadChapter(path) {
     // 使用GitHub raw content获取文件内容
-    fetch(`https://raw.githubusercontent.com/你的用户名/你的用户名.github.io/main/${path}`)
+    fetch(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${path}`)
         .then(response => response.text())
         .then(content => {
             // 更新页面显示
