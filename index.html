@@ -7,34 +7,36 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>我的小说</h1>
-            <div class="search-box">
-                <input type="text" id="search-input" placeholder="搜索章节或人物...">
-                <button id="search-btn">搜索</button>
-            </div>
-        </header>
-        
-        <div class="content-wrapper">
-            <aside class="sidebar">
-                <h2>目录</h2>
-                <ul id="chapter-list">
-                    <!-- 章节列表将通过JavaScript动态生成 -->
-                </ul>
-            </aside>
-            
-            <main class="reader">
-                <div class="chapter-title" id="current-chapter"></div>
-                <div class="chapter-content" id="chapter-content"></div>
-                <div class="navigation">
-                    <button id="prev-btn">上一章</button>
-                    <button id="next-btn">下一章</button>
-                </div>
-            </main>
+    <header>
+        <h1>我的小说</h1>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="搜索章节或人物...">
+            <button id="searchButton">搜索</button>
         </div>
+    </header>
+    
+    <div class="container">
+        <aside class="sidebar">
+            <h2>章节目录</h2>
+            <div id="chapterList"></div>
+            
+            <h2>人物设定</h2>
+            <div id="characterList"></div>
+        </aside>
+        
+        <main class="content">
+            <div id="reader">
+                <h2 id="chapterTitle">请选择章节</h2>
+                <div id="chapterContent"></div>
+                <div class="bookmark-container">
+                    <button id="saveBookmark">保存进度</button>
+                    <button id="loadBookmark">读取进度</button>
+                </div>
+            </div>
+        </main>
     </div>
-
-    <script src="js/script.js"></script>
+    
+    <script src="js/app.js"></script>
+    <script src="js/search.js"></script>
 </body>
 </html>
