@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
         searchResults.style.display = 'block';
     }
     
-    // 加载内容
+    // 加载内容 - 修改了滚动逻辑
     function loadContent(path, isChapter) {
         console.log('正在加载:', path);
         
@@ -140,10 +140,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 chapterTitle.textContent = title;
                 chapterContent.textContent = content;
                 
-                // 滚动到内容区域
-                document.querySelector('.content-area').scrollIntoView({
-                    behavior: 'smooth'
-                });
+                // 修改后的滚动逻辑 - 添加了元素存在性检查
+                const contentArea = document.querySelector('.content-area');
+                if (contentArea) {
+                    // 添加小延迟确保内容完全渲染
+                    setTimeout(() => {
+                        contentArea.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }, 100);
+                } else {
+                    console.warn('未找到.content-area元素');
+                }
             })
             .catch(error => {
                 console.error('加载内容失败:', error);

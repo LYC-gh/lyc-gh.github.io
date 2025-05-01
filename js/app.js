@@ -4,6 +4,7 @@ let characterFiles = [];
 let currentChapterIndex = -1;
 let currentCharacterIndex = -1;
 let isCharacterChapter = false;
+let isSidebarCollapsed = false;
 
 // 等待DOM加载完成
 document.addEventListener('DOMContentLoaded', function() {
@@ -16,7 +17,48 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化章节导航按钮
     initChapterNavigation();
+    
+    // 初始化侧边栏切换按钮
+    initSidebarToggle();
 });
+
+// 初始化侧边栏切换按钮
+function initSidebarToggle() {
+    const toggleBtn = document.getElementById('toggleSidebar');
+    const sidebar = document.querySelector('.sidebar');
+    const container = document.querySelector('.container');
+    
+    if (!toggleBtn || !sidebar || !container) {
+        console.error('侧边栏元素未找到');
+        return;
+    }
+
+    toggleBtn.addEventListener('click', function() {
+        isSidebarCollapsed = !isSidebarCollapsed;
+        
+        if (isSidebarCollapsed) {
+            sidebar.classList.add('collapsed');
+            container.classList.add('with-collapsed-sidebar');
+            toggleBtn.textContent = '显示';
+        } else {
+            sidebar.classList.remove('collapsed');
+            container.classList.remove('with-collapsed-sidebar');
+            toggleBtn.textContent = '隐藏';
+        }
+        
+        // 保存侧边栏状态
+        localStorage.setItem('sidebarCollapsed', isSidebarCollapsed);
+    });
+    
+    // 检查本地存储中的侧边栏状态
+    const savedSidebarState = localStorage.getItem('sidebarCollapsed');
+    if (savedSidebarState === 'true') {
+        isSidebarCollapsed = true;
+        sidebar.classList.add('collapsed');
+        container.classList.add('with-collapsed-sidebar');
+        toggleBtn.textContent = '显示';
+    }
+}
 
 // 加载章节列表
 function loadChapterList() {
@@ -24,6 +66,7 @@ function loadChapterList() {
         .then(response => response.json())
         .then(files => {
             const chapterList = document.getElementById('chapterList');
+            if (!chapterList) return;
             
             // 过滤并排序章节文件
             chapterFiles = files
@@ -55,6 +98,7 @@ function loadCharacterList() {
         .then(response => response.json())
         .then(files => {
             const characterList = document.getElementById('characterList');
+            if (!characterList) return;
             
             // 过滤并排序人物设定文件
             characterFiles = files
@@ -79,6 +123,9 @@ function loadCharacterList() {
 
 // 加载章节内容
 function loadChapter(path, index = -1) {
+    // 滚动到顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     fetch(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${path}`)
         .then(response => response.text())
         .then(content => {
@@ -101,6 +148,9 @@ function loadChapter(path, index = -1) {
 
 // 加载人物设定内容
 function loadCharacter(path, index = -1) {
+    // 滚动到顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
     fetch(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${path}`)
         .then(response => response.text())
         .then(content => {
@@ -123,7 +173,15 @@ function loadCharacter(path, index = -1) {
 
 // 初始化章节导航功能
 function initChapterNavigation() {
-    document.getElementById('prevChapter').addEventListener('click', () => {
+    const prevBtn = document.getElementById('prevChapter');
+    const nextBtn = document.getElementById('nextChapter');
+    
+    if (!prevBtn || !nextBtn) return;
+    
+    prevBtn.addEventListener('click', () => {
+        // 滚动到顶部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
         if (isCharacterChapter) {
             // 人物设定章节的上一页
             if (currentCharacterIndex > 0) {
@@ -137,7 +195,10 @@ function initChapterNavigation() {
         }
     });
     
-    document.getElementById('nextChapter').addEventListener('click', () => {
+    nextBtn.addEventListener('click', () => {
+        // 滚动到顶部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
         if (isCharacterChapter) {
             // 人物设定章节的下一页
             if (currentCharacterIndex < characterFiles.length - 1) {
@@ -154,9 +215,9 @@ function initChapterNavigation() {
     // 键盘快捷键支持
     document.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowLeft') {
-            document.getElementById('prevChapter').click();
+            prevBtn.click();
         } else if (e.key === 'ArrowRight') {
-            document.getElementById('nextChapter').click();
+            nextBtn.click();
         }
     });
 }
@@ -165,6 +226,8 @@ function initChapterNavigation() {
 function updateNavigationButtons() {
     const prevBtn = document.getElementById('prevChapter');
     const nextBtn = document.getElementById('nextChapter');
+    
+    if (!prevBtn || !nextBtn) return;
     
     if (isCharacterChapter) {
         prevBtn.disabled = currentCharacterIndex <= 0;
@@ -178,6 +241,8 @@ function updateNavigationButtons() {
 // 更新章节进度显示
 function updateChapterProgress() {
     const progressElement = document.getElementById('chapterProgress');
+    if (!progressElement) return;
+    
     if (isCharacterChapter) {
         progressElement.textContent = `人物设定 ${currentCharacterIndex + 1}/${characterFiles.length}`;
     } else {
@@ -189,6 +254,8 @@ function updateChapterProgress() {
 function initBookmark() {
     const saveBookmarkBtn = document.getElementById('saveBookmark');
     const loadBookmarkBtn = document.getElementById('loadBookmark');
+    
+    if (!saveBookmarkBtn || !loadBookmarkBtn) return;
     
     saveBookmarkBtn.addEventListener('click', function() {
         const chapterPath = localStorage.getItem('lastChapter');
