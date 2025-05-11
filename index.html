@@ -30,7 +30,15 @@
         <main class="content">
             <div id="reader">
                 <h2 id="chapterTitle">请选择章节</h2>
-                <div id="chapterContent"></div>
+                <div id="chapterContent">
+                    <!-- 添加骨架屏占位 -->
+                    <div class="skeleton-loader" style="display: none;">
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line" style="width: 80%;"></div>
+                    </div>
+                </div>
                 <div class="chapter-nav">
                     <button id="prevChapter" class="nav-button" disabled>上一章</button>
                     <span class="chapter-progress" id="chapterProgress"></span>

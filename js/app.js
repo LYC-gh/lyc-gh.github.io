@@ -5,6 +5,8 @@ let currentChapterIndex = -1;
 let currentCharacterIndex = -1;
 let isCharacterChapter = false;
 let isSidebarCollapsed = false;
+let preloadedChapters = {}; // 预加载章节缓存
+let preloading = false; // 防止重复预加载
 
 // 等待DOM加载完成
 document.addEventListener('DOMContentLoaded', function() {
@@ -20,7 +22,32 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化侧边栏切换按钮
     initSidebarToggle();
+    
+    // 添加预加载提示元素
+    const preloadNotice = document.createElement('div');
+    preloadNotice.className = 'preload-notice';
+    preloadNotice.textContent = '正在预加载下一章...';
+    document.body.appendChild(preloadNotice);
 });
+
+// 显示预加载提示
+function showPreloadNotice() {
+    const notice = document.querySelector('.preload-notice');
+    if (notice) notice.classList.add('show');
+    setTimeout(() => notice.classList.remove('show'), 2000);
+}
+
+// 显示骨架屏
+function showSkeletonLoader() {
+    const skeleton = document.querySelector('.skeleton-loader');
+    if (skeleton) skeleton.style.display = 'block';
+}
+
+// 隐藏骨架屏
+function hideSkeletonLoader() {
+    const skeleton = document.querySelector('.skeleton-loader');
+    if (skeleton) skeleton.style.display = 'none';
+}
 
 // 初始化侧边栏切换按钮
 function initSidebarToggle() {
@@ -123,15 +150,42 @@ function loadCharacterList() {
 
 // 加载章节内容
 function loadChapter(path, index = -1) {
+    // 显示骨架屏
+    showSkeletonLoader();
+    
     // 滚动到顶部
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // 检查是否有预加载缓存
+    if (preloadedChapters[path]) {
+        const chapterName = path.split('/').pop().replace('.txt', '');
+        document.getElementById('chapterTitle').textContent = chapterName;
+        document.getElementById('chapterContent').innerHTML = preloadedChapters[path];
+        
+        currentChapterIndex = index >= 0 ? index : chapterFiles.findIndex(file => file.path === path);
+        isCharacterChapter = false;
+        
+        updateNavigationButtons();
+        updateChapterProgress();
+        
+        localStorage.setItem('lastChapter', path);
+        localStorage.setItem('lastChapterIndex', currentChapterIndex);
+        localStorage.setItem('isCharacterChapter', false);
+        
+        // 隐藏骨架屏
+        hideSkeletonLoader();
+        
+        // 预加载下一章
+        preloadNextChapter();
+        return;
+    }
     
     fetch(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${path}`)
         .then(response => response.text())
         .then(content => {
             const chapterName = path.split('/').pop().replace('.txt', '');
             document.getElementById('chapterTitle').textContent = chapterName;
-            document.getElementById('chapterContent').textContent = content;
+            document.getElementById('chapterContent').innerHTML = content;
             
             currentChapterIndex = index >= 0 ? index : chapterFiles.findIndex(file => file.path === path);
             isCharacterChapter = false;
@@ -142,12 +196,52 @@ function loadChapter(path, index = -1) {
             localStorage.setItem('lastChapter', path);
             localStorage.setItem('lastChapterIndex', currentChapterIndex);
             localStorage.setItem('isCharacterChapter', false);
+            
+            // 隐藏骨架屏
+            hideSkeletonLoader();
+            
+            // 预加载下一章
+            preloadNextChapter();
         })
-        .catch(error => console.error('加载章节内容失败:', error));
+        .catch(error => {
+            console.error('加载章节内容失败:', error);
+            hideSkeletonLoader();
+            document.getElementById('chapterContent').innerHTML = '<p>章节加载失败，请重试</p>';
+        });
+}
+
+// 预加载下一章
+function preloadNextChapter() {
+    if (preloading || isCharacterChapter) return;
+    
+    // 检查是否有下一章
+    if (currentChapterIndex < chapterFiles.length - 1) {
+        const nextChapterPath = chapterFiles[currentChapterIndex + 1].path;
+        
+        // 如果已经预加载过，跳过
+        if (preloadedChapters[nextChapterPath]) return;
+        
+        preloading = true;
+        showPreloadNotice();
+        
+        fetch(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${nextChapterPath}`)
+            .then(response => response.text())
+            .then(content => {
+                preloadedChapters[nextChapterPath] = content;
+                preloading = false;
+            })
+            .catch(error => {
+                console.error('预加载章节失败:', error);
+                preloading = false;
+            });
+    }
 }
 
 // 加载人物设定内容
 function loadCharacter(path, index = -1) {
+    // 显示骨架屏
+    showSkeletonLoader();
+    
     // 滚动到顶部
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
@@ -156,7 +250,7 @@ function loadCharacter(path, index = -1) {
         .then(content => {
             const characterName = path.split('/').pop().replace('.txt', '');
             document.getElementById('chapterTitle').textContent = characterName;
-            document.getElementById('chapterContent').textContent = content;
+            document.getElementById('chapterContent').innerHTML = content;
             
             currentCharacterIndex = index >= 0 ? index : characterFiles.findIndex(file => file.path === path);
             isCharacterChapter = true;
@@ -167,8 +261,15 @@ function loadCharacter(path, index = -1) {
             localStorage.setItem('lastChapter', path);
             localStorage.setItem('lastCharacterIndex', currentCharacterIndex);
             localStorage.setItem('isCharacterChapter', true);
+            
+            // 隐藏骨架屏
+            hideSkeletonLoader();
         })
-        .catch(error => console.error('加载人物设定内容失败:', error));
+        .catch(error => {
+            console.error('加载人物设定内容失败:', error);
+            hideSkeletonLoader();
+            document.getElementById('chapterContent').innerHTML = '<p>人物设定加载失败，请重试</p>';
+        });
 }
 
 // 初始化章节导航功能
@@ -179,6 +280,9 @@ function initChapterNavigation() {
     if (!prevBtn || !nextBtn) return;
     
     prevBtn.addEventListener('click', () => {
+        // 显示骨架屏
+        showSkeletonLoader();
+        
         // 滚动到顶部
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
@@ -196,6 +300,9 @@ function initChapterNavigation() {
     });
     
     nextBtn.addEventListener('click', () => {
+        // 显示骨架屏
+        showSkeletonLoader();
+        
         // 滚动到顶部
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
@@ -218,6 +325,19 @@ function initChapterNavigation() {
             prevBtn.click();
         } else if (e.key === 'ArrowRight') {
             nextBtn.click();
+        }
+    });
+    
+    // 滚动监听，预加载下一章
+    window.addEventListener('scroll', () => {
+        if (isCharacterChapter) return;
+        
+        const scrollPosition = window.scrollY + window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        
+        // 当滚动到页面70%时预加载下一章
+        if (scrollPosition > documentHeight * 0.7) {
+            preloadNextChapter();
         }
     });
 }
