@@ -703,3 +703,29 @@ function showError(message, isFatal = false) {
         hideSkeletonLoader();
     }, 500); // 延迟500ms显示
 }
+
+document.getElementById('clearCacheBtn').addEventListener('click', () => {
+  if (confirm('确定要清除所有缓存吗？这将重新加载页面。')) {
+    localStorage.clear();
+    sessionStorage.clear();
+    location.reload();
+  }
+});
+
+localStorage.setItem('chapterListCache', JSON.stringify({
+    data: files,
+    timestamp: Date.now()
+}));
+
+// 检查时验证是否过期（7天过期）
+function getCacheWithExpiry(key) {
+    const item = localStorage.getItem(key);
+    if (!item) return null;
+    
+    const { data, timestamp } = JSON.parse(item);
+    if (Date.now() - timestamp > 7 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(key);
+        return null;
+    }
+    return data;
+}
