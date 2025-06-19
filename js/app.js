@@ -5,74 +5,158 @@ let currentChapterIndex = -1;
 let currentCharacterIndex = -1;
 let isCharacterChapter = false;
 let isSidebarCollapsed = false;
-let preloadedChapters = {}; // 预加载章节缓存
-let preloading = false; // 防止重复预加载
+let preloading = false;
+let chapterListCache = null;
+let characterListCache = null;
+let isInitialLoadComplete = false; 
 
 // 等待DOM加载完成
 document.addEventListener('DOMContentLoaded', function() {
-    // 加载章节和人物设定列表
-    loadChapterList();
-    loadCharacterList();
+    initAll();
+});
+
+function saveBookmark() {
+    if (isCharacterChapter) {
+        localStorage.setItem('lastCharacterIndex', currentCharacterIndex);
+        localStorage.setItem('lastChapter', characterFiles[currentCharacterIndex].path);
+    } else {
+        localStorage.setItem('lastChapterIndex', currentChapterIndex);
+        localStorage.setItem('lastChapter', chapterFiles[currentChapterIndex].path);
+    }
     
-    // 初始化书签功能
-    initBookmark();
+    localStorage.setItem('isCharacterChapter', isCharacterChapter);
+    localStorage.setItem('scrollPosition', window.scrollY);
     
-    // 初始化章节导航按钮
-    initChapterNavigation();
-    
-    // 初始化侧边栏切换按钮
-    initSidebarToggle();
-	
-	// 初始化下载按钮
-    initDownloadButton();
-    
-    // 添加预加载提示元素
+    console.log('阅读进度已自动保存');
+}
+
+async function initAll() {
+    try {
+        isInitialLoadComplete = false;
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        if (loadingIndicator) loadingIndicator.style.display = 'flex';
+        
+        const errorBoundary = document.getElementById('errorBoundary');
+        if (errorBoundary) errorBoundary.style.display = 'none';
+        
+        // 使用Promise.allSettled代替Promise.all，避免一个失败导致全部失败
+        const results = await Promise.allSettled([
+            loadChapterList(),
+            loadCharacterList()
+        ]);
+        
+        // 检查是否有失败的任务
+        const failed = results.filter(r => r.status === 'rejected');
+        if (failed.length > 0) {
+            console.error('部分加载失败:', failed);
+            // 不是所有失败都需要显示错误
+        }
+        
+        initBookmark();
+        initChapterNavigation();
+        initSidebarToggle();
+        initDownloadButton();
+        addPreloadNotice();
+        
+        isInitialLoadComplete = true;
+        
+    } catch (error) {
+        console.error('初始化失败:', error);
+        // 只有在初始加载未完成时才显示全屏错误
+        if (!isInitialLoadComplete) {
+            showError('初始化失败，请刷新重试', true);
+        }
+    } finally {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+    }
+}
+
+
+function addPreloadNotice() {
     const preloadNotice = document.createElement('div');
     preloadNotice.className = 'preload-notice';
     preloadNotice.textContent = '正在预加载下一章...';
     document.body.appendChild(preloadNotice);
-});
+}
 
 function initDownloadButton() {
     const downloadBtn = document.getElementById('downloadAllBtn');
     if (!downloadBtn) return;
     
     downloadBtn.addEventListener('click', function() {
-        // 替换为你的实际网盘链接
         const cloudUrl = 'https://wwgj.lanzoum.com/iNQRu2z3hkmf';
-        
-        // 添加确认提示
         const isConfirmed = confirm('即将跳转到下载页面，是否继续？');
         if (isConfirmed) {
-            // 新标签页打开网盘链接
             window.open(cloudUrl, '_blank');
-            
-            // 如果需要当前页跳转，使用：
-            // window.location.href = cloudUrl;
         }
     });
 }
 
-// 显示预加载提示
+// 显示/隐藏加载状态
 function showPreloadNotice() {
     const notice = document.querySelector('.preload-notice');
     if (notice) notice.classList.add('show');
-    setTimeout(() => notice.classList.remove('show'), 2000);
+    setTimeout(() => notice?.classList.remove('show'), 2000);
 }
 
-// 显示骨架屏
 function showSkeletonLoader() {
     const skeleton = document.querySelector('.skeleton-loader');
     if (skeleton) skeleton.style.display = 'block';
 }
 
-// 隐藏骨架屏
 function hideSkeletonLoader() {
     const skeleton = document.querySelector('.skeleton-loader');
     if (skeleton) skeleton.style.display = 'none';
 }
 
-// 初始化侧边栏切换按钮
+// 带重试的fetch函数
+async function fetchWithRetry(url, retries = 3, delay = 1000) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchWithRetry(url, retries - 1, delay * 2);
+        }
+        throw error;
+    }
+}
+
+async function fetchTextWithRetry(url, retries = 3, delay = 1000) {
+    try {
+        const response = await fetch(url);
+        
+        // 更严格的响应验证
+        if (!response.ok) {
+            // 检查是否是404错误
+            if (response.status === 404) {
+                throw new Error(`文件未找到: ${url}`);
+            }
+            throw new Error(`HTTP错误! 状态: ${response.status}`);
+        }
+        
+        const content = await response.text();
+        
+        // 验证内容是否有效
+        if (content.includes('404: Not Found')) {
+            throw new Error('请求的资源不存在');
+        }
+        
+        return content;
+    } catch (error) {
+        if (retries > 0) {
+            console.log(`重试 ${url} (剩余 ${retries} 次)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchTextWithRetry(url, retries - 1, delay * 2);
+        }
+        throw error;
+    }
+}
+
+// 侧边栏切换功能
 function initSidebarToggle() {
     const toggleBtn = document.getElementById('toggleSidebar');
     const sidebar = document.querySelector('.sidebar');
@@ -96,11 +180,10 @@ function initSidebarToggle() {
             toggleBtn.textContent = '隐藏';
         }
         
-        // 保存侧边栏状态
         localStorage.setItem('sidebarCollapsed', isSidebarCollapsed);
     });
     
-    // 检查本地存储中的侧边栏状态
+    // 初始化侧边栏状态
     const savedSidebarState = localStorage.getItem('sidebarCollapsed');
     if (savedSidebarState === 'true') {
         isSidebarCollapsed = true;
@@ -110,259 +193,390 @@ function initSidebarToggle() {
     }
 }
 
-// 加载章节列表
-function loadChapterList() {
-    fetch('https://api.github.com/repos/LYC-gh/lyc-gh.github.io/contents/chapters')
-        .then(response => response.json())
-        .then(files => {
-            const chapterList = document.getElementById('chapterList');
-            if (!chapterList) return;
-            
-            // 过滤并排序章节文件
-            chapterFiles = files
-                .filter(file => file.name.endsWith('.txt'))
-                .sort((a, b) => a.name.localeCompare(b.name));
-            
-            chapterFiles.forEach((file, index) => {
-                const chapterItem = document.createElement('div');
-                chapterItem.className = 'chapter-item';
-                chapterItem.textContent = file.name.replace('.txt', '');
-                
-                chapterItem.addEventListener('click', () => {
-                    isCharacterChapter = false;
-                    loadChapter(file.path, index);
-                });
-                
-                chapterList.appendChild(chapterItem);
-            });
-            
-            // 更新章节进度显示
-            updateChapterProgress();
-        })
-        .catch(error => console.error('加载章节列表失败:', error));
+// 章节列表功能
+async function loadChapterList() {
+    // 检查缓存
+    const cachedList = localStorage.getItem('chapterListCache');
+    if (cachedList) {
+        try {
+            chapterListCache = JSON.parse(cachedList);
+            renderChapterList(chapterListCache);
+            return;
+        } catch (e) {
+            console.error('解析章节缓存失败:', e);
+        }
+    }
+
+    try {
+        const files = await fetchWithRetry('https://api.github.com/repos/LYC-gh/lyc-gh.github.io/contents/chapters');
+        chapterListCache = removeDuplicates(files); // 去重处理
+        localStorage.setItem('chapterListCache', JSON.stringify(chapterListCache));
+        renderChapterList(chapterListCache);
+    } catch (error) {
+        console.error('加载章节列表失败:', error);
+        showError('加载章节列表失败，请刷新重试');
+    }
 }
 
-// 加载人物设定列表
-function loadCharacterList() {
-    fetch('https://api.github.com/repos/LYC-gh/lyc-gh.github.io/contents/characters')
-        .then(response => response.json())
-        .then(files => {
-            const characterList = document.getElementById('characterList');
-            if (!characterList) return;
-            
-            // 过滤并排序人物设定文件
-            characterFiles = files
-                .filter(file => file.name.endsWith('.txt'))
-                .sort((a, b) => a.name.localeCompare(b.name));
-            
-            characterFiles.forEach((file, index) => {
-                const characterItem = document.createElement('div');
-                characterItem.className = 'character-item';
-                characterItem.textContent = file.name.replace('.txt', '');
-                
-                characterItem.addEventListener('click', () => {
-                    isCharacterChapter = true;
-                    loadCharacter(file.path, index);
-                });
-                
-                characterList.appendChild(characterItem);
-            });
-        })
-        .catch(error => console.error('加载人物设定列表失败:', error));
+// 人物设定列表功能
+async function loadCharacterList() {
+    // 检查缓存
+    const cachedList = localStorage.getItem('characterListCache');
+    if (cachedList) {
+        try {
+            characterListCache = JSON.parse(cachedList);
+            renderCharacterList(characterListCache);
+            return;
+        } catch (e) {
+            console.error('解析人物设定缓存失败:', e);
+        }
+    }
+
+    try {
+        const files = await fetchWithRetry('https://api.github.com/repos/LYC-gh/lyc-gh.github.io/contents/characters');
+        characterListCache = removeDuplicates(files); // 去重处理
+        localStorage.setItem('characterListCache', JSON.stringify(characterListCache));
+        renderCharacterList(characterListCache);
+    } catch (error) {
+        console.error('加载人物设定列表失败:', error);
+        showError('加载人物设定列表失败，请刷新重试');
+    }
+}
+
+// 去重函数 - 解决重复第一章问题
+function removeDuplicates(files) {
+    const seen = new Set();
+    return files.filter(file => {
+        const key = file.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+// 渲染章节列表
+function renderChapterList(files) {
+    const chapterList = document.getElementById('chapterList');
+    if (!chapterList) return;
+    
+    chapterList.innerHTML = ''; // 清空现有内容
+    
+    chapterFiles = files
+        .filter(file => file.name.endsWith('.txt'))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    
+    chapterFiles.forEach((file, index) => {
+        const chapterItem = document.createElement('div');
+        chapterItem.className = 'chapter-item';
+        chapterItem.textContent = file.name.replace('.txt', '');
+        
+        chapterItem.addEventListener('click', () => {
+            isCharacterChapter = false;
+            loadChapter(file.path, index);
+        });
+        
+        chapterList.appendChild(chapterItem);
+    });
+    
+    updateChapterProgress();
+}
+
+// 渲染人物设定列表
+function renderCharacterList(files) {
+    const characterList = document.getElementById('characterList');
+    if (!characterList) return;
+    
+    characterList.innerHTML = ''; // 清空现有内容
+    
+    characterFiles = files
+        .filter(file => file.name.endsWith('.txt'))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    
+    characterFiles.forEach((file, index) => {
+        const characterItem = document.createElement('div');
+        characterItem.className = 'character-item';
+        characterItem.textContent = file.name.replace('.txt', '');
+        
+        characterItem.addEventListener('click', () => {
+            isCharacterChapter = true;
+            loadCharacter(file.path, index);
+        });
+        
+        characterList.appendChild(characterItem);
+    });
+    
+    updateChapterProgress();
 }
 
 // 加载章节内容
-function loadChapter(path, index = -1) {
-    // 显示骨架屏
-    showSkeletonLoader();
-    
-    // 滚动到顶部
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    // 检查是否有预加载缓存
-    if (preloadedChapters[path]) {
-        const chapterName = path.split('/').pop().replace('.txt', '');
-        document.getElementById('chapterTitle').textContent = chapterName;
-        document.getElementById('chapterContent').innerHTML = preloadedChapters[path];
+async function loadChapter(path, index = -1) {
+    try {
+        showSkeletonLoader();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         
-        currentChapterIndex = index >= 0 ? index : chapterFiles.findIndex(file => file.path === path);
-        isCharacterChapter = false;
+        const cacheKey = `chapter_${path.replace(/\//g, '_')}`;
+        const cachedContent = localStorage.getItem(cacheKey);
         
-        updateNavigationButtons();
-        updateChapterProgress();
+        if (cachedContent) {
+            displayChapterContent(path, cachedContent, index);
+            return;
+        }
         
-        localStorage.setItem('lastChapter', path);
-        localStorage.setItem('lastChapterIndex', currentChapterIndex);
-        localStorage.setItem('isCharacterChapter', false);
+        const errorBoundary = document.getElementById('errorBoundary');
+        if (errorBoundary) errorBoundary.style.display = 'none';
         
-        // 隐藏骨架屏
+        // 添加超时机制
+        const content = await Promise.race([
+            fetchTextWithRetry(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${path}`),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 10000)) // 10秒超时
+        ]);
+        
+        if (!content || content.trim() === '') {
+            throw new Error('获取的内容为空');
+        }
+        
+        localStorage.setItem(cacheKey, content);
+        displayChapterContent(path, content, index);
+        preloadAdjacentChapters(index);
+        
+    } catch (error) {
+        console.error('加载章节内容失败:', error);
+        const currentContent = document.getElementById('chapterContent').innerHTML;
+        const hasContent = currentContent && currentContent.trim() !== '';
+        showError('章节加载失败: ' + error.message, !hasContent);
+    } finally {
         hideSkeletonLoader();
-        
-        // 预加载下一章
-        preloadNextChapter();
-        return;
     }
-    
-    fetch(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${path}`)
-        .then(response => response.text())
-        .then(content => {
-            const chapterName = path.split('/').pop().replace('.txt', '');
-            document.getElementById('chapterTitle').textContent = chapterName;
-            document.getElementById('chapterContent').innerHTML = content;
-            
-            currentChapterIndex = index >= 0 ? index : chapterFiles.findIndex(file => file.path === path);
-            isCharacterChapter = false;
-            
-            updateNavigationButtons();
-            updateChapterProgress();
-            
-            localStorage.setItem('lastChapter', path);
-            localStorage.setItem('lastChapterIndex', currentChapterIndex);
-            localStorage.setItem('isCharacterChapter', false);
-            
-            // 隐藏骨架屏
-            hideSkeletonLoader();
-            
-            // 预加载下一章
-            preloadNextChapter();
-        })
-        .catch(error => {
-            console.error('加载章节内容失败:', error);
-            hideSkeletonLoader();
-            document.getElementById('chapterContent').innerHTML = '<p>章节加载失败，请重试</p>';
-        });
 }
 
-// 预加载下一章
-function preloadNextChapter() {
-    if (preloading || isCharacterChapter) return;
-    
-    // 检查是否有下一章
-    if (currentChapterIndex < chapterFiles.length - 1) {
-        const nextChapterPath = chapterFiles[currentChapterIndex + 1].path;
-        
-        // 如果已经预加载过，跳过
-        if (preloadedChapters[nextChapterPath]) return;
-        
-        preloading = true;
-        showPreloadNotice();
-        
-        fetch(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${nextChapterPath}`)
-            .then(response => response.text())
-            .then(content => {
-                preloadedChapters[nextChapterPath] = content;
-                preloading = false;
-            })
-            .catch(error => {
-                console.error('预加载章节失败:', error);
-                preloading = false;
-            });
-    }
-}
 
 // 加载人物设定内容
-function loadCharacter(path, index = -1) {
-    // 显示骨架屏
-    showSkeletonLoader();
-    
-    // 滚动到顶部
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    fetch(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${path}`)
-        .then(response => response.text())
-        .then(content => {
-            const characterName = path.split('/').pop().replace('.txt', '');
-            document.getElementById('chapterTitle').textContent = characterName;
-            document.getElementById('chapterContent').innerHTML = content;
-            
-            currentCharacterIndex = index >= 0 ? index : characterFiles.findIndex(file => file.path === path);
-            isCharacterChapter = true;
-            
-            updateNavigationButtons();
-            updateChapterProgress();
-            
-            localStorage.setItem('lastChapter', path);
-            localStorage.setItem('lastCharacterIndex', currentCharacterIndex);
-            localStorage.setItem('isCharacterChapter', true);
-            
-            // 隐藏骨架屏
-            hideSkeletonLoader();
-        })
-        .catch(error => {
-            console.error('加载人物设定内容失败:', error);
-            hideSkeletonLoader();
-            document.getElementById('chapterContent').innerHTML = '<p>人物设定加载失败，请重试</p>';
-        });
+async function loadCharacter(path, index = -1) {
+    try {
+        showSkeletonLoader();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        const cacheKey = `character_${path.replace(/\//g, '_')}`;
+        const cachedContent = localStorage.getItem(cacheKey);
+        
+        if (cachedContent) {
+            displayCharacterContent(path, cachedContent, index);
+            return;
+        }
+        
+        // 添加超时机制
+        const content = await Promise.race([
+            fetchTextWithRetry(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${path}`),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 10000)) // 10秒超时
+        ]);
+        
+        localStorage.setItem(cacheKey, content);
+        displayCharacterContent(path, content, index);
+    } catch (error) {
+        console.error('加载人物设定内容失败:', error);
+        showError('人物设定加载失败: ' + error.message);
+    } finally {
+        hideSkeletonLoader();
+    }
 }
 
-// 初始化章节导航功能
+// 显示章节内容
+function displayChapterContent(path, content, index) {
+    try {
+        const contentArea = document.getElementById('chapterContent');
+        if (!contentArea) return;
+
+        // 章节名称
+        const chapterName = path.split('/').pop().replace('.txt', '');
+        document.getElementById('chapterTitle').textContent = chapterName;
+
+        // 格式化内容
+        let formattedContent = formatContent(content, chapterName);
+
+        contentArea.innerHTML = formattedContent;
+        
+        // 更新当前章节索引并保存书签
+        if (index >= 0) {
+            currentChapterIndex = index;
+            isCharacterChapter = false;
+            updateChapterProgress();
+            saveBookmark(); // 这里调用保存书签
+        }
+
+        // 恢复滚动位置
+        setTimeout(() => {
+            const savedPosition = localStorage.getItem('scrollPosition');
+            if (savedPosition) {
+                window.scrollTo(0, parseInt(savedPosition));
+                localStorage.removeItem('scrollPosition');
+            }
+        }, 100);
+
+    } catch (error) {
+        console.error('显示章节内容失败:', error);
+        showError('格式化内容时出错: ' + error.message);
+    }
+}
+
+function formatContent(rawContent, chapterName) {
+    // 1. 清理Markdown加粗语法
+    const cleanContent = rawContent
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/__(.*?)__/g, '$1');
+
+    // 2. 统一换行符并分割段落
+    const paragraphs = cleanContent
+        .replace(/\r\n/g, '\n')
+        .replace(/\n+/g, '\n')
+        .split('\n')
+        .filter(line => line.trim());
+
+    // 3. 包裹每个段落
+    const processedParagraphs = paragraphs.map(line => 
+        `<p class="content-paragraph">${line}</p>`
+    );
+
+    // 4. 返回完整HTML
+    return `
+        <h2 class="chapter-title">${chapterName}</h2>
+        ${processedParagraphs.join('')}
+    `;
+}
+
+// 显示人物设定内容
+function displayCharacterContent(path, content, index) {
+    const characterName = path.split('/').pop().replace('.txt', '');
+    document.getElementById('chapterTitle').textContent = characterName;
+    
+    // 格式化人物设定内容
+    const formattedContent = formatCharacterContent(content);
+    document.getElementById('chapterContent').innerHTML = formattedContent;
+    
+    currentCharacterIndex = index >= 0 ? index : characterFiles.findIndex(file => file.path === path);
+    isCharacterChapter = true;
+    
+    updateNavigationButtons();
+    updateChapterProgress();
+    saveBookmark();
+    
+    hideSkeletonLoader();
+}
+
+function formatCharacterContent(rawContent) {
+    // 1. 按行分割并过滤空行
+    const lines = rawContent
+        .replace(/\r\n/g, '\n')  // 统一换行符
+        .split('\n')
+        .filter(line => line.trim());
+    
+    // 2. 处理每行内容
+    const formattedLines = lines.map(line => {
+        // 处理键值对格式 (如 "性别：男")
+        if (line.includes('：')) {
+            const [key, value] = line.split('：', 2);
+            return `<div class="character-line"><strong>${key}：</strong>${value || '无'}</div>`;
+        }
+        // 处理普通文本
+        return `<div class="character-line">${line}</div>`;
+    });
+    
+    // 3. 组合成完整HTML
+    return formattedLines.join('');
+}
+
+// 预加载相邻章节
+function preloadAdjacentChapters(currentIndex) {
+    if (preloading || isCharacterChapter) return;
+    
+    // 预加载下一章
+    if (currentIndex < chapterFiles.length - 1) {
+        const nextPath = chapterFiles[currentIndex + 1].path;
+        preloadContent(nextPath, `chapter_${nextPath.replace(/\//g, '_')}`);
+    }
+    
+    // 预加载上一章
+    if (currentIndex > 0) {
+        const prevPath = chapterFiles[currentIndex - 1].path;
+        preloadContent(prevPath, `chapter_${prevPath.replace(/\//g, '_')}`);
+    }
+}
+
+// 通用预加载函数
+async function preloadContent(path, cacheKey) {
+    if (localStorage.getItem(cacheKey)) return;
+    
+    preloading = true;
+    showPreloadNotice();
+    
+    try {
+        const content = await fetchTextWithRetry(`https://raw.githubusercontent.com/LYC-gh/lyc-gh.github.io/main/${path}`);
+        localStorage.setItem(cacheKey, content);
+    } catch (error) {
+        console.error('预加载内容失败:', error);
+    } finally {
+        preloading = false;
+    }
+}
+
+// 章节导航功能
 function initChapterNavigation() {
     const prevBtn = document.getElementById('prevChapter');
     const nextBtn = document.getElementById('nextChapter');
     
     if (!prevBtn || !nextBtn) return;
     
-    prevBtn.addEventListener('click', () => {
-        // 显示骨架屏
-        showSkeletonLoader();
-        
-        // 滚动到顶部
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        if (isCharacterChapter) {
-            // 人物设定章节的上一页
-            if (currentCharacterIndex > 0) {
-                loadCharacter(characterFiles[currentCharacterIndex - 1].path, currentCharacterIndex - 1);
-            }
-        } else {
-            // 普通章节的上一页
-            if (currentChapterIndex > 0) {
-                loadChapter(chapterFiles[currentChapterIndex - 1].path, currentChapterIndex - 1);
-            }
-        }
-    });
+    prevBtn.addEventListener('click', navigateToPrevious);
+    nextBtn.addEventListener('click', navigateToNext);
     
-    nextBtn.addEventListener('click', () => {
-        // 显示骨架屏
-        showSkeletonLoader();
-        
-        // 滚动到顶部
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        if (isCharacterChapter) {
-            // 人物设定章节的下一页
-            if (currentCharacterIndex < characterFiles.length - 1) {
-                loadCharacter(characterFiles[currentCharacterIndex + 1].path, currentCharacterIndex + 1);
-            }
-        } else {
-            // 普通章节的下一页
-            if (currentChapterIndex < chapterFiles.length - 1) {
-                loadChapter(chapterFiles[currentChapterIndex + 1].path, currentChapterIndex + 1);
-            }
-        }
-    });
-    
-    // 键盘快捷键支持
+    // 键盘快捷键
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft') {
-            prevBtn.click();
-        } else if (e.key === 'ArrowRight') {
-            nextBtn.click();
-        }
+        if (e.key === 'ArrowLeft') prevBtn.click();
+        if (e.key === 'ArrowRight') nextBtn.click();
     });
     
-    // 滚动监听，预加载下一章
-    window.addEventListener('scroll', () => {
-        if (isCharacterChapter) return;
-        
-        const scrollPosition = window.scrollY + window.innerHeight;
-        const documentHeight = document.documentElement.scrollHeight;
-        
-        // 当滚动到页面70%时预加载下一章
-        if (scrollPosition > documentHeight * 0.7) {
-            preloadNextChapter();
+    // 滚动预加载
+    window.addEventListener('scroll', handleScrollForPreload);
+}
+
+function navigateToPrevious() {
+    showSkeletonLoader();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    if (isCharacterChapter) {
+        if (currentCharacterIndex > 0) {
+            loadCharacter(characterFiles[currentCharacterIndex - 1].path, currentCharacterIndex - 1);
         }
-    });
+    } else {
+        if (currentChapterIndex > 0) {
+            loadChapter(chapterFiles[currentChapterIndex - 1].path, currentChapterIndex - 1);
+        }
+    }
+}
+
+function navigateToNext() {
+    showSkeletonLoader();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    if (isCharacterChapter) {
+        if (currentCharacterIndex < characterFiles.length - 1) {
+            loadCharacter(characterFiles[currentCharacterIndex + 1].path, currentCharacterIndex + 1);
+        }
+    } else {
+        if (currentChapterIndex < chapterFiles.length - 1) {
+            loadChapter(chapterFiles[currentChapterIndex + 1].path, currentChapterIndex + 1);
+        }
+    }
+}
+
+function handleScrollForPreload() {
+    if (isCharacterChapter) return;
+    
+    const scrollPosition = window.scrollY + window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    
+    if (scrollPosition > documentHeight * 0.7) {
+        preloadNextChapter();
+    }
 }
 
 // 更新导航按钮状态
@@ -381,7 +595,7 @@ function updateNavigationButtons() {
     }
 }
 
-// 更新章节进度显示
+// 更新进度显示
 function updateChapterProgress() {
     const progressElement = document.getElementById('chapterProgress');
     if (!progressElement) return;
@@ -393,66 +607,99 @@ function updateChapterProgress() {
     }
 }
 
-// 初始化书签功能
+// 书签功能
 function initBookmark() {
     const saveBookmarkBtn = document.getElementById('saveBookmark');
     const loadBookmarkBtn = document.getElementById('loadBookmark');
     
     if (!saveBookmarkBtn || !loadBookmarkBtn) return;
     
-    saveBookmarkBtn.addEventListener('click', function() {
-        const chapterPath = localStorage.getItem('lastChapter');
-        if (chapterPath) {
-            const scrollPosition = window.scrollY;
-            localStorage.setItem('bookmark', JSON.stringify({
-                chapter: chapterPath,
-                position: scrollPosition,
-                chapterIndex: currentChapterIndex,
-                characterIndex: currentCharacterIndex,
-                isCharacterChapter: isCharacterChapter
-            }));
-            alert('阅读进度已保存！');
-        } else {
-            alert('没有正在阅读的章节！');
-        }
-    });
+    saveBookmarkBtn.addEventListener('click', saveReadingProgress);
+    loadBookmarkBtn.addEventListener('click', loadReadingProgress);
     
-    loadBookmarkBtn.addEventListener('click', function() {
-        const bookmark = localStorage.getItem('bookmark');
-        if (bookmark) {
-            try {
-                const { chapter, position, chapterIndex, characterIndex, isCharacterChapter: isCharacter } = JSON.parse(bookmark);
-                isCharacterChapter = isCharacter || false;
-                
-                if (isCharacterChapter) {
-                    loadCharacter(chapter, characterIndex);
-                } else {
-                    loadChapter(chapter, chapterIndex);
-                }
-                
-                setTimeout(() => {
-                    window.scrollTo(0, position);
-                }, 500);
-            } catch (e) {
-                console.error('读取书签失败:', e);
-                alert('读取书签失败！');
-            }
-        } else {
-            alert('没有找到保存的阅读进度！');
-        }
-    });
+    // 自动加载上次阅读进度
+    loadLastReadingProgress();
+}
+
+function saveReadingProgress() {
+    const chapterPath = localStorage.getItem('lastChapter');
+    if (!chapterPath) {
+        alert('没有正在阅读的章节！');
+        return;
+    }
     
-    // 检查是否有上次阅读的章节，自动加载
+    const bookmark = {
+        chapter: chapterPath,
+        position: window.scrollY,
+        chapterIndex: currentChapterIndex,
+        characterIndex: currentCharacterIndex,
+        isCharacterChapter: isCharacterChapter
+    };
+    
+    localStorage.setItem('bookmark', JSON.stringify(bookmark));
+    alert('阅读进度已保存！');
+}
+
+function loadReadingProgress() {
+    const bookmark = localStorage.getItem('bookmark');
+    if (!bookmark) {
+        alert('没有找到保存的阅读进度！');
+        return;
+    }
+    
+    try {
+        const { chapter, position, chapterIndex, characterIndex, isCharacterChapter: isCharacter } = JSON.parse(bookmark);
+        isCharacterChapter = isCharacter || false;
+        
+        if (isCharacterChapter) {
+            loadCharacter(chapter, characterIndex);
+        } else {
+            loadChapter(chapter, chapterIndex);
+        }
+        
+        setTimeout(() => window.scrollTo(0, position), 500);
+    } catch (e) {
+        console.error('读取书签失败:', e);
+        alert('读取书签失败！');
+    }
+}
+
+function loadLastReadingProgress() {
     const lastChapter = localStorage.getItem('lastChapter');
-    const lastChapterIndex = localStorage.getItem('lastChapterIndex');
-    const lastCharacterIndex = localStorage.getItem('lastCharacterIndex');
+    if (!lastChapter) return;
+    
     const lastIsCharacterChapter = localStorage.getItem('isCharacterChapter') === 'true';
     
-    if (lastChapter) {
-        if (lastIsCharacterChapter) {
-            loadCharacter(lastChapter, parseInt(lastCharacterIndex) || 0);
-        } else {
-            loadChapter(lastChapter, parseInt(lastChapterIndex) || 0);
-        }
+    if (lastIsCharacterChapter) {
+        const lastCharacterIndex = parseInt(localStorage.getItem('lastCharacterIndex')) || 0;
+        loadCharacter(lastChapter, lastCharacterIndex);
+    } else {
+        const lastChapterIndex = parseInt(localStorage.getItem('lastChapterIndex')) || 0;
+        loadChapter(lastChapter, lastChapterIndex);
     }
+}
+
+// 错误显示函数
+function showError(message, isFatal = false) {
+	// 延迟显示错误，避免在加载过程中过早显示
+    setTimeout(() => {
+        const errorElement = document.createElement('div');
+        errorElement.className = 'error-message';
+        errorElement.textContent = message;
+        
+        const contentArea = document.getElementById('chapterContent');
+        if (contentArea) {
+            if (isFatal) {
+                contentArea.innerHTML = '';
+            }
+            contentArea.appendChild(errorElement);
+        }
+        
+        if (isFatal) {
+            const errorBoundary = document.getElementById('errorBoundary');
+            if (errorBoundary) errorBoundary.style.display = 'block';
+        }
+        
+        hideSkeletonLoader();
+    }, 500); // 延迟500ms显示
 }

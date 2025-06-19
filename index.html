@@ -4,37 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LYC的小说</title>
+    <link rel="preload" href="css/style.css" as="style">
     <link rel="stylesheet" href="css/style.css">
+    <script>
+        // 内联关键CSS或JS
+        function setInitialTheme() {
+            const savedSidebarState = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (savedSidebarState) {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+            
+            // 初始加载指示器
+            document.getElementById('loadingIndicator').style.display = 'flex';
+        }
+        setInitialTheme();
+    </script>
 </head>
 <body>
     <header>
         <h1>LYC的小说</h1>
-		<button id="downloadAllBtn" class="download-button">下载所有章节</button>
-		<div class="search-container">
+        <button id="downloadAllBtn" class="download-button">下载所有章节</button>
         <div class="search-container">
             <input type="text" id="searchInput" placeholder="搜索章节或人物..." autocomplete="off">
             <button id="searchButton">搜索</button>
-            <div id="searchResults"></div>
+            <div id="searchResults" class="search-results"></div>
         </div>
     </header>
+    
     <div class="container">
         <button id="toggleSidebar" class="toggle-button">隐藏</button>
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h2>章节目录</h2>
             </div>
-            <div id="chapterList"></div>
+            <div id="chapterList" class="scrollable-list"></div>
             
-            <h2>人物设定</h2>
-            <div id="characterList"></div>
+            <div class="sidebar-header">
+                <h2>人物设定</h2>
+            </div>
+            <div id="characterList" class="scrollable-list"></div>
         </aside>
         
         <main class="content">
             <div id="reader">
                 <h2 id="chapterTitle">请选择章节</h2>
                 <div id="chapterContent">
-                    <!-- 添加骨架屏占位 -->
-                    <div class="skeleton-loader" style="display: none;">
+                    <!-- 骨架屏占位 -->
+                    <div class="skeleton-loader">
                         <div class="skeleton-line"></div>
                         <div class="skeleton-line"></div>
                         <div class="skeleton-line"></div>
@@ -54,7 +70,24 @@
         </main>
     </div>
     
-    <script src="js/app.js"></script>
-    <script src="js/search.js"></script>
+    <!-- 全局加载指示器 -->
+    <div id="loadingIndicator" class="loading-indicator">
+        <div class="loading-spinner"></div>
+        <p>加载中...</p>
+    </div>
+
+    <!-- 错误边界 -->
+    <div id="errorBoundary" class="error-boundary">
+        <p>加载失败，请<a href="javascript:location.reload()">刷新页面</a>重试</p>
+        <button id="retryButton" class="retry-button">重试</button>
+    </div>
+    
+    <!-- 预加载提示 -->
+    <div id="preloadNotice" class="preload-notice">
+        <p>正在预加载下一章...</p>
+    </div>
+
+    <script src="js/app.js" defer></script>
+    <script src="js/search.js" defer></script>
 </body>
 </html>

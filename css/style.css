@@ -66,8 +66,8 @@ header h1 {
     display: flex;
     flex: 1;
     min-height: calc(100vh - 60px);
-    transition: margin-left 0.3s ease;
     position: relative;
+    overflow: visible; /* 确保内容不隐藏 */
 }
 
 .sidebar {
@@ -129,10 +129,9 @@ header h1 {
 .content {
     flex: 1;
     padding: 1rem 2rem;
-    background-color: white;
+    background-color: transparent; /* 改为透明 */
     min-width: 0;
-    overflow-y: auto;
-    transition: all 0.3s ease;
+    overflow: visible; /* 改为visible */
 }
 
 /* 目录样式 */
@@ -209,20 +208,14 @@ header h1 {
 }
 
 #chapterContent {
-    margin: 1.5rem 0;
-    padding: 1.5rem;
-    background-color: #f9f9f9;
-    border-radius: 4px;
-    white-space: pre-line;
+    font-family: "Noto Serif SC", serif;
+    line-height: 1.8;
+    font-size: 1.1rem;
+    color: #333;
+    white-space: normal;
     word-break: break-word;
     overflow-wrap: break-word;
-    text-align: left;
-    line-height: 1.8;
-    box-sizing: border-box;
-    width: 100%;
-    max-width: 100%;
-    font-family: 'Microsoft YaHei', monospace;
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+    padding: 20px;
 }
 
 /* 搜索框样式 */
@@ -359,10 +352,15 @@ header h1 {
     }
     
     #chapterContent {
-        padding: 1rem;
-        font-size: 1rem;
-        line-height: 1.8;
-    }
+    font-family: "Noto Serif SC", serif;
+    line-height: 1.8;
+    font-size: 1.1rem;
+    color: #333;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    padding: 20px;
+	}
     
     .chapter-nav {
         flex-direction: column;
@@ -412,9 +410,15 @@ header h1 {
     }
     
     #chapterContent {
-        padding: 0.8rem;
-        font-size: 0.95rem;
-    }
+    font-family: "Noto Serif SC", serif;
+    line-height: 1.8;
+    font-size: 1.1rem;
+    color: #333;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    padding: 20px;
+	}
     
     .bookmark-container {
         display: flex;
@@ -428,11 +432,14 @@ header h1 {
 }
 /* 骨架屏加载动画 */
 .skeleton-loader {
-    margin: 1.5rem 0;
-    padding: 1.5rem;
-    background-color: #f9f9f9;
-    border-radius: 4px;
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.05);
+    display: none; /* 默认隐藏 */
+    position: absolute; /* 避免影响布局 */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(249, 249, 249, 0.8);
+    z-index: 100;
 }
 
 .skeleton-line {
@@ -467,4 +474,97 @@ header h1 {
 
 .preload-notice.show {
     opacity: 1;
+}
+
+.loading-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loading-spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error-boundary {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    font-size: 1.2rem;
+    color: #e74c3c;
+}
+
+.error-boundary a {
+    color: #3498db;
+    text-decoration: underline;
+}
+
+.error-message {
+    color: #d32f2f !important; /* 强制颜色 */
+    padding: 10px;
+    background: #ffebee;
+    border-radius: 4px;
+    margin: 10px 0;
+    position: relative; /* 确保在最上层 */
+    z-index: 1;
+}
+#chapterContent {
+    font-family: "Noto Serif SC", serif;
+    line-height: 1.8;
+    font-size: 1.1rem;
+    color: #333;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    padding: 20px;
+}
+
+.content-paragraph {
+    margin-bottom: 1em;  /* 段落间距 */
+    text-indent: 2em;    /* 首行缩进2字符 */
+}
+
+.content-paragraph:first-of-type {
+    text-indent: 0;      /* 首段不缩进 */
+}
+
+#chapterContent.character-content {
+    line-height: 1.8;
+    padding: 20px;
+}
+
+.character-line {
+    margin-bottom: 0.8em;
+    padding-left: 1em;
+    text-indent: -1em; /* 实现悬挂缩进 */
+}
+
+.character-line strong {
+    color: #555;
+    font-weight: 600;
 }
