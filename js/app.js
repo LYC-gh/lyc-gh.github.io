@@ -22,6 +22,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化侧边栏切换按钮
     initSidebarToggle();
+	
+	// 初始化下载按钮
+    initDownloadButton();
     
     // 添加预加载提示元素
     const preloadNotice = document.createElement('div');
@@ -29,6 +32,26 @@ document.addEventListener('DOMContentLoaded', function() {
     preloadNotice.textContent = '正在预加载下一章...';
     document.body.appendChild(preloadNotice);
 });
+
+function initDownloadButton() {
+    const downloadBtn = document.getElementById('downloadAllBtn');
+    if (!downloadBtn) return;
+    
+    downloadBtn.addEventListener('click', function() {
+        // 替换为你的实际网盘链接
+        const cloudUrl = 'https://wwgj.lanzoum.com/iNQRu2z3hkmf';
+        
+        // 添加确认提示
+        const isConfirmed = confirm('即将跳转到下载页面，是否继续？');
+        if (isConfirmed) {
+            // 新标签页打开网盘链接
+            window.open(cloudUrl, '_blank');
+            
+            // 如果需要当前页跳转，使用：
+            // window.location.href = cloudUrl;
+        }
+    });
+}
 
 // 显示预加载提示
 function showPreloadNotice() {

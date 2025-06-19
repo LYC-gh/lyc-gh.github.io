@@ -28,6 +28,34 @@ header {
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
+.download-button {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.download-button:hover {
+    background-color: #2980b9;
+}
+
+@media (max-width: 768px) {
+    .download-button {
+        position: static;
+        margin: 0.5rem auto;
+        display: block;
+        width: auto;
+    }
+}
+
 header h1 {
     margin: 0;
     font-size: 1.8rem;
