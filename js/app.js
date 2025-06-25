@@ -263,7 +263,19 @@ function renderChapterList(files) {
     
     chapterFiles = files
         .filter(file => file.name.endsWith('.txt'))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => {
+            // 提取章节数字
+            const numA = extractChapterNumber(a.name);
+            const numB = extractChapterNumber(b.name);
+            
+            // 如果都能提取到数字，按数字排序
+            if (numA !== null && numB !== null) {
+                return numA - numB;
+            }
+            
+            // 否则按名称排序
+            return a.name.localeCompare(b.name);
+        });
     
     chapterFiles.forEach((file, index) => {
         const chapterItem = document.createElement('div');
@@ -279,6 +291,71 @@ function renderChapterList(files) {
     });
     
     updateChapterProgress();
+}
+
+function extractChapterNumber(name) {
+    // 匹配"第一章"、"第1章"等格式
+    const match = name.match(/第([一二三四五六七八九十百千万零\d]+)章/);
+    if (match) {
+        const numStr = match[1];
+        
+        // 如果是中文数字，转换为阿拉伯数字
+        if (/[一二三四五六七八九十百千万零]/.test(numStr)) {
+            return chineseToNumber(numStr);
+        }
+        
+        // 如果是阿拉伯数字，直接转换
+        return parseInt(numStr, 10);
+    }
+    
+    // 如果没有匹配到章节格式，返回null
+    return null;
+}
+
+// 中文数字转阿拉伯数字
+function chineseToNumber(chineseNum) {
+    const chineseNumMap = {
+        '零': 0,
+        '一': 1,
+        '二': 2,
+        '三': 3,
+        '四': 4,
+        '五': 5,
+        '六': 6,
+        '七': 7,
+        '八': 8,
+        '九': 9,
+        '十': 10,
+        '百': 100,
+        '千': 1000,
+        '万': 10000
+    };
+    
+    let result = 0;
+    let temp = 0;
+    let prev = 0;
+    
+    for (let i = 0; i < chineseNum.length; i++) {
+        const char = chineseNum[i];
+        const num = chineseNumMap[char];
+        
+        if (num === undefined) {
+            return null; // 包含非数字字符
+        }
+        
+        if (num < 10) {
+            temp = num;
+        } else if (num === 10) {
+            result += (temp === 0 ? 1 : temp) * num;
+            temp = 0;
+        } else {
+            temp = temp === 0 ? num : temp * num;
+            result += temp;
+            temp = 0;
+        }
+    }
+    
+    return result + temp;
 }
 
 // 渲染人物设定列表
