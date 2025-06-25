@@ -85,7 +85,7 @@ function initDownloadButton() {
     if (!downloadBtn) return;
     
     downloadBtn.addEventListener('click', function() {
-        const cloudUrl = 'https://wwgj.lanzoum.com/iNQRu2z3hkmf';
+        const cloudUrl = 'https://wwgj.lanzoum.com/iwOhu2zii94h';
         const isConfirmed = confirm('即将跳转到下载页面，是否继续？');
         if (isConfirmed) {
             window.open(cloudUrl, '_blank');
